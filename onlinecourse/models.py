@@ -134,6 +134,51 @@ class Enrollment(models.Model):
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
 
+class Submission(models.Model):
+    """
+    A Submission represents an exam submission for a given Enrollment.
+    - Many-to-One with Enrollment (one enrollment can have multiple submissions).
+    - Many-to-Many with Choice to store selected choices for this submission.
+    """
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='submissions')
+    choices = models.ManyToManyField(Choice, related_name='submissions', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        user = self.enrollment.user.username if self.enrollment and self.enrollment.user else 'unknown'
+        course = self.enrollment.course.name if self.enrollment and self.enrollment.course else 'unknown'
+        return f"Submission {self.id} by {user} for {course} at {self.created_at}"
+
+    def total_score(self):
+        """
+        Compute total score for this submission by summing grade_point for questions
+        where the selected choices are correct. This is a simple example and assumes
+        choice.is_correct represents correctness of that choice.
+        """
+        # Sum grade_point for distinct questions where at least one selected choice is correct.
+        scored_questions = set()
+        score = 0.0
+        for choice in self.choices.select_related('question').all():
+            if choice.is_correct and choice.question_id not in scored_questions:
+                score += choice.question.grade_point
+                scored_questions.add(choice.question_id)
+        return score
+
+    def clean(self):
+        """
+        Validate that all selected choices belong to the same course as the enrollment.
+        Raises ValidationError if any choice does not belong to the course.
+        """
+        from django.core.exceptions import ValidationError
+        if not self.enrollment:
+            return
+        course = self.enrollment.course
+        invalid = []
+        for choice in self.choices.all():
+            if choice.question.course_id != course.id:
+                invalid.append(choice.id)
+        if invalid:
+            raise ValidationError("One or more selected choices do not belong to the course of the enrollment.")
 
 # One enrollment could have multiple submission
 # One submission could have multiple choices

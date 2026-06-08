@@ -1,6 +1,6 @@
 from django.contrib import admin
 # <HINT> Import any new Models here
-from .models import Course, Lesson, Instructor, Learner, Question, Choice
+from .models import Course, Lesson, Instructor, Learner, Question, Choice, Submission
 
 # <HINT> Register QuestionInline and ChoiceInline classes here
 
@@ -38,6 +38,16 @@ class ChoiceAdmin(admin.ModelAdmin):
     list_display = ('question', 'content', 'is_correct')
     list_filter = ('is_correct',)
     search_fields = ('content',)
+
+class SubmissionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'enrollment', 'created_at', 'submission_score')
+    search_fields = ('enrollment__user__username', 'enrollment__course__name')
+    filter_horizontal = ('choices',)
+
+    def submission_score(self, obj):
+        return obj.total_score()
+    submission_score.short_description = 'Score'
+
 class LessonAdmin(admin.ModelAdmin):
     list_display = ['title']
 
@@ -50,3 +60,4 @@ admin.site.register(Instructor)
 admin.site.register(Learner)
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Choice, ChoiceAdmin)
+admin.site.register(Submission, SubmissionAdmin)

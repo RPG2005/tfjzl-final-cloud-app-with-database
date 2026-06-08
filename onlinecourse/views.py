@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Submission, Choice
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -111,6 +111,13 @@ def enroll(request, course_id):
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
 #def submit(request, course_id):
+submission = Submission.objects.create(enrollment=enrollment)
+
+selected_choice_ids = extract_answers(request)
+
+for choice_id in selected_choice_ids:
+    choice = Choice.objects.get(id=choice_id)
+    submission.choices.add(choice)
 
 
 # An example method to collect the selected choices from the exam form from the request object
