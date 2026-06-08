@@ -8,6 +8,7 @@ except Exception:
 
 from django.conf import settings
 import uuid
+from django.core.validators import MinValueValidator
 
 
 # Instructor model
@@ -75,6 +76,24 @@ class Lesson(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.TextField()
 
+class Question(models.Model):
+    """
+    Questions for an exam related to a Course.
+    - Many-to-one relationship with Course (a Course can have many Questions).
+    - Stores the question text and a grade point value for the question.
+    """
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='questions')
+    question_text = models.TextField()
+    grade_point = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0.0)],
+        help_text="Puntos/valor de la pregunta en la evaluación"
+    )
+
+    def __str__(self):
+        # Muestra una versión corta del texto y curso para identificarla
+        text_preview = (self.question_text[:50] + '...') if len(self.question_text) > 50 else self.question_text
+        return f"{self.course.name} - {text_preview} ({self.grade_point})"
 
 # Enrollment model
 # <HINT> Once a user enrolled a class, an enrollment entry should be created between the user and course
