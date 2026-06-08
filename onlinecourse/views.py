@@ -111,13 +111,33 @@ def enroll(request, course_id):
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
 #def submit(request, course_id):
-submission = Submission.objects.create(enrollment=enrollment)
+def submit(request, course_id):
+    """
+    Create a submission for an exam enrollment.
+    - Get user and course
+    - Get or create enrollment
+    - Create submission and associate selected choices
+    - Redirect to results
+    """
+    course = get_object_or_404(Course, pk=course_id)
+    user = request.user
 
-selected_choice_ids = extract_answers(request)
+    # Get enrollment
+    enrollment = get_object_or_404(Enrollment, user=user, course=course)
 
-for choice_id in selected_choice_ids:
-    choice = Choice.objects.get(id=choice_id)
-    submission.choices.add(choice)
+    # Create submission
+    submission = Submission.objects.create(enrollment=enrollment)
+
+    # Get selected choice IDs from request
+    selected_choice_ids = extract_answers(request)
+
+    # Add choices to submission
+    for choice_id in selected_choice_ids:
+        choice = get_object_or_404(Choice, id=choice_id)
+        submission.choices.add(choice)
+
+    # Redirect to results view (you need to implement show_exam_result)
+    return redirect('onlinecourse:show_exam_result', submission_id=submission.id)
 
 
 # An example method to collect the selected choices from the exam form from the request object
@@ -130,6 +150,58 @@ def extract_answers(request):
            submitted_anwsers.append(choice_id)
    return submitted_anwsers
 
+def show_exam_result(request, submission_id):
+    """
+    Display exam results for a submission.
+    - Get submission and associated enrollment/course
+    - Calculate score based on correct choices
+    - Display each question with selected choice and correct answer
+    - Show if learner passed or failed
+    """
+    submission = get_object_or_404(Submission, pk=submission_id)
+    course = submission.enrollment.course
+
+    # Get all questions for the course
+    questions = course.questions.all()
+
+    # Build question results
+    question_results = []
+    total_score = submission.total_score()
+
+    for question in questions:
+        # Get selected choices for this question
+        selected_choices = submission.choices.filter(question=question)
+
+        # Check if any selected choice is correct
+        is_correct = selected_choices.filter(is_correct=True).exists()
+
+        # Get correct choice(s) for this question
+        correct_choice = question.choices.filter(is_correct=True).first()
+
+        question_results.append({
+            'question': question,
+            'selected_choices': selected_choices,
+            'correct_choice': correct_choice,
+            'is_correct': is_correct,
+            'grade_point': question.grade_point if is_correct else 0
+        })
+
+    # Determine if passed (score > 80% of total possible points)
+    max_possible_score = sum(q.grade_point for q in questions)
+    percentage = (total_score / max_possible_score * 100) if max_possible_score > 0 else 0
+    passed = percentage > 80
+
+    context = {
+        'submission': submission,
+        'course': course,
+        'question_results': question_results,
+        'total_score': total_score,
+        'max_score': max_possible_score,
+        'grade': percentage,
+        'passed': passed,
+    }
+
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 
 # <HINT> Create an exam result view to check if learner passed exam and show their question results and result for each question,
 # you may implement it based on the following logic:
