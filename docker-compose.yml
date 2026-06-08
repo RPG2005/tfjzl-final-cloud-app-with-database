@@ -1,0 +1,16 @@
+name: coursera
+services:
+  onlinecourse:
+    build: .
+    container_name: onlinecourse-django
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "python3 manage.py makemigrations onlinecourse &&
+             python3 manage.py migrate &&
+             python3 manage.py runserver 0.0.0.0:8000"
