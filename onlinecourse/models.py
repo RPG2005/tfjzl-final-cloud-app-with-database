@@ -95,6 +95,27 @@ class Question(models.Model):
         text_preview = (self.question_text[:50] + '...') if len(self.question_text) > 50 else self.question_text
         return f"{self.course.name} - {text_preview} ({self.grade_point})"
 
+class Choice(models.Model):
+    """
+    Opciones para una Question.
+    - Many-to-One con Question.
+    - Texto de la opción y booleano indicando si es correcta.
+    """
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
+    content = models.CharField(max_length=200)
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        short = (self.content[:50] + '...') if len(self.content) > 50 else self.content
+        status = 'correcta' if self.is_correct else 'incorrecta'
+        # Evitar excepciones si question o course faltan
+        curso = self.question.course.name if getattr(self, 'question', None) and getattr(self.question, 'course', None) else ''
+        return f"{curso} - {short} ({status})"
+
+    class Meta:
+        verbose_name = 'Choice'
+        verbose_name_plural = 'Choices'
+
 # Enrollment model
 # <HINT> Once a user enrolled a class, an enrollment entry should be created between the user and course
 # And we could use the enrollment to track information such as exam submissions
